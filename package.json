@@ -1,0 +1,12 @@
+{
+  "name": "notion-snap-reborn",
+  "version": "1.3.4-tabs",
+  "description": "Notion web wrapper with tabs, based on notion-snap-reborn by Sunshio",
+  "main": "main.js",
+  "author": "Sunshio",
+  "license": "ISC",
+  "private": true,
+  "devDependencies": {
+    "electron": "^44.7.0"
+  }
+}

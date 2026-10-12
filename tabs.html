@@ -1,0 +1,201 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <style>
+      :root {
+        --bar: #e8e8e7;
+        --tab: #f1f1ef;
+        --active: #ffffff;
+        --text: #37352f;
+        --muted: #91918e;
+        --accent: #2383e2;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bar: #202020;
+          --tab: #2a2a2a;
+          --active: #191919;
+          --text: #e6e6e5;
+          --muted: #7f7f7f;
+        }
+      }
+      html, body {
+        margin: 0;
+        height: 34px;
+        overflow: hidden;
+        background: var(--bar);
+        font: 13px system-ui, sans-serif;
+        color: var(--text);
+        user-select: none;
+      }
+      #bar {
+        display: flex;
+        align-items: flex-end;
+        height: 34px;
+        padding: 0 6px;
+        gap: 2px;
+      }
+      .tab {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 1 220px;
+        min-width: 60px;
+        height: 28px;
+        padding: 0 6px 0 10px;
+        border-radius: 8px 8px 0 0;
+        background: var(--tab);
+        cursor: default;
+      }
+      .tab.active {
+        background: var(--active);
+      }
+      .tab.dragging {
+        opacity: 0.4;
+      }
+      .tab.drop-before::before,
+      .tab.drop-after::after {
+        content: "";
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        width: 2px;
+        background: var(--accent);
+      }
+      .tab.drop-before::before {
+        left: -2px;
+      }
+      .tab.drop-after::after {
+        right: -2px;
+      }
+      .favicon {
+        width: 16px;
+        height: 16px;
+        flex: none;
+      }
+      .title {
+        flex: 1;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      button {
+        border: 0;
+        background: none;
+        color: var(--muted);
+        border-radius: 4px;
+        font: inherit;
+        line-height: 18px;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        flex: none;
+      }
+      button:hover {
+        background: rgba(128, 128, 128, 0.25);
+        color: var(--text);
+      }
+      #new {
+        align-self: center;
+        margin-left: 4px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"><button id="new" title="New tab (Ctrl+T)">+</button></div>
+    <script>
+      const TAB_MIME = "application/x-notion-tab";
+      const bar = document.getElementById("bar");
+      const newButton = document.getElementById("new");
+      newButton.onclick = () => tabsApi.newTab();
+
+      const clearDropMarks = () =>
+        bar.querySelectorAll(".drop-before, .drop-after").forEach((el) => el.classList.remove("drop-before", "drop-after"));
+
+      // Index the dragged tab should land at, from the pointer position over the bar
+      const dropIndex = (clientX) => {
+        const tabs = [...bar.querySelectorAll(".tab")];
+        const index = tabs.findIndex((el) => {
+          const { left, width } = el.getBoundingClientRect();
+          return clientX < left + width / 2;
+        });
+        return index === -1 ? tabs.length : index;
+      };
+
+      bar.addEventListener("dragover", (e) => {
+        if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        clearDropMarks();
+        const tabs = [...bar.querySelectorAll(".tab")];
+        const index = dropIndex(e.clientX);
+        if (index < tabs.length) tabs[index].classList.add("drop-before");
+        else tabs.at(-1)?.classList.add("drop-after");
+      });
+      bar.addEventListener("dragleave", (e) => {
+        if (!bar.contains(e.relatedTarget)) clearDropMarks();
+      });
+      bar.addEventListener("drop", (e) => {
+        const id = Number(e.dataTransfer.getData(TAB_MIME));
+        if (!id) return;
+        e.preventDefault();
+        clearDropMarks();
+        tabsApi.move(id, dropIndex(e.clientX));
+      });
+
+      tabsApi.onTabs(({ tabs, activeId }) => {
+        bar.querySelectorAll(".tab").forEach((el) => el.remove());
+        for (const { id, title, favicon } of tabs) {
+          const tab = document.createElement("div");
+          tab.className = "tab" + (id === activeId ? " active" : "");
+          tab.title = title;
+          tab.draggable = true;
+          tab.onmousedown = (e) => {
+            if (e.button === 0) tabsApi.activate(id);
+          };
+          // Middle click closes the tab, like Chrome
+          tab.onauxclick = (e) => {
+            if (e.button === 1) tabsApi.close(id);
+          };
+          tab.ondragstart = (e) => {
+            e.dataTransfer.setData(TAB_MIME, String(id));
+            e.dataTransfer.effectAllowed = "move";
+            tab.classList.add("dragging");
+          };
+          tab.ondragend = (e) => {
+            tab.classList.remove("dragging");
+            clearDropMarks();
+            if (e.dataTransfer.dropEffect === "none") tabsApi.dragEnd(id);
+          };
+
+          if (favicon) {
+            const icon = document.createElement("img");
+            icon.className = "favicon";
+            icon.src = favicon;
+            icon.draggable = false;
+            icon.onerror = () => icon.remove();
+            tab.append(icon);
+          }
+
+          const label = document.createElement("span");
+          label.className = "title";
+          label.textContent = title;
+
+          const close = document.createElement("button");
+          close.textContent = "×";
+          close.title = "Close tab (Ctrl+W)";
+          close.draggable = false;
+          close.onmousedown = (e) => e.stopPropagation();
+          close.onclick = () => tabsApi.close(id);
+
+          tab.append(label, close);
+          bar.insertBefore(tab, newButton);
+        }
+      });
+    </script>
+  </body>
+</html>

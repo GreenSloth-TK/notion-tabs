@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Notion
+Comment=Notion web wrapper with tabs
+Exec=env -u GSETTINGS_SCHEMA_DIR GTK_IM_MODULE=ibus XMODIFIERS=@im=ibus CHROME_DESKTOP=notion-tabs.desktop @DIR@/node_modules/electron/dist/electron @DIR@ --ozone-platform=x11 %U
+Icon=@DIR@/icon.png
+Type=Application
+Categories=Office;
+StartupWMClass=notion-snap-reborn
