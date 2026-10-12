@@ -16,6 +16,7 @@ Notion은 리눅스용 공식 앱이 없어서, notion.so를 Electron으로 띄�
 | 창을 여러 개 띄워 관리하기 불편 | 크롬 같은 탭 (순서 변경, 창으로 분리, 다른 창으로 이동, 파비콘) |
 | Wayland에서 창 버튼이 왼쪽에 그려짐 | X11 모드로 실행해 GNOME이 창 테두리를 그림 |
 | conda 등이 `GSETTINGS_SCHEMA_DIR`를 바꿔 GNOME 설정을 못 읽음 | 런처에서 해당 변수 제거 |
+| Ubuntu 24.04+에서 "샌드박스" 오류로 실행되지 않음 | Electron 전용 AppArmor 프로필 등록 (`/etc/apparmor.d/notion-tabs`, 크롬과 같은 방식) |
 
 ## 테스트 환경
 
@@ -32,6 +33,8 @@ Node.js와 npm이 필요합니다.
 ```sh
 ./install.sh
 ```
+
+Ubuntu 24.04 이상에서는 AppArmor 프로필 등록을 위해 sudo 비밀번호를 한 번 묻습니다.
 
 앱 메뉴에 "Notion"이 생깁니다. 로그인 정보는 `~/.config/notion-snap-reborn`에 저장됩니다
 (snap 버전에서 옮겨오려면 `~/snap/notion-snap-reborn/current/.config/notion-snap-reborn`을 복사).
